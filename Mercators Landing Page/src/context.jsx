@@ -1,5 +1,6 @@
-import React, { useState, useContext, useRef } from "react";
-import emailjs from "@emailjs/browser";
+
+import React, { useState, useContext } from "react";
+import axios from "axios";
 
 const url = "https://mercatorapiservices.com/api/Message/Send";
 
@@ -11,51 +12,52 @@ export const AppProvider = ({ children }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const form = useRef();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const changeName = (e) => {
-    setName(e.target.value);
-  };
-  const changeEmail = (e) => {
-    setEmail(e.target.value);
-  };
-  const changeMessage = (e) => {
-    setMessage(e.target.value);
-  };
+  const changeName = (e) => setName(e.target.value);
+  const changeEmail = (e) => setEmail(e.target.value);
+  const changeMessage = (e) => setMessage(e.target.value);
 
-  const openModal = () => {
-    setModalOpen(true);
-  };
-  const closeModal = () => {
-    setModalOpen(false);
-  };
-  const menuClick = () => {
-    setModalOpen(false);
-  };
-  const messageClose = () => {
-    setOpenMessage(false);
-  };
+  const openModal = () => setModalOpen(true);
+  const closeModal = () => setModalOpen(false);
+  const menuClick = () => setModalOpen(false);
+  const messageClose = () => setOpenMessage(false);
 
   const sendEmail = async (e) => {
     e.preventDefault();
-    console.log(name);
-    if (name && email && message) {
-      setOpenMessage(true);
+
+    if (isSubmitting) return;
+
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      setSubmitError("Please complete all fields before submitting.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      await axios.post(url, {
+        to: ["Connect@mercator.ng"],
+        subject: "Message From Mercator Website",
+        message: `<p>Name: ${name}</p><p>Email: ${email}</p><p>Message: ${message}</p>`,
+        from: "noreply@mercator.ng",
+        senderName: "Mercator",
+      });
+
+      // Only clear the form and show success after the API succeeds.
       setName("");
       setEmail("");
       setMessage("");
-      try {
-        const resp = await axios.post(url, {
-          to: ["Connect@mercator.ng"],
-          subject: "Message From Mercator Website",
-          message: `<p>name:${name}</p> <p>email:${email}</p> <p><b>message:${message}</p></b>`,
-          from: "noreply@mercator.ng",
-          senderName: "Mercator",
-        });
-        console.log(resp.data);
-      } catch (error) {
-        console.log(error.response);
-      }
+      setOpenMessage(true);
+    } catch (error) {
+      console.error("Contact form submission failed:", error);
+      setSubmitError(
+        "We couldn't send your message. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -67,6 +69,7 @@ export const AppProvider = ({ children }) => {
         closeModal,
         menuClick,
         openMessage,
+        messageClose,
         name,
         email,
         message,
@@ -74,7 +77,8 @@ export const AppProvider = ({ children }) => {
         changeMessage,
         changeName,
         sendEmail,
-        messageClose,
+        isSubmitting,
+        submitError,
       }}
     >
       {children}
@@ -82,6 +86,4 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-export const useGlobalContext = () => {
-  return useContext(AppContext);
-};
+export const useGlobalContext = () => useContext(AppContext);
